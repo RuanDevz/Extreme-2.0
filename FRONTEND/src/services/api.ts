@@ -310,6 +310,16 @@ export const adminApi = {
     return response.data;
   },
   
+  getActiveUsers: async () => {
+    const response = await api.get('/admin/active-users');
+    return response.data;
+  },
+  
+  getContentCharts: async () => {
+    const response = await api.get('/admin/content/charts');
+    return response.data;
+  },
+  
   getUserAnalytics: async (period = '30') => {
     const response = await api.get('/admin/users/analytics', { params: { period } });
     return response.data;

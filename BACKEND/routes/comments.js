@@ -123,13 +123,27 @@ router.post('/', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'É necessário fornecer contentId ou modelId' });
     }
 
-    const comment = await Comment.create({
+    // Se for um reply (parentId existe), não duplicar o contentId/modelId
+    const commentData = {
       userId,
-      contentId,
-      modelId,
-      parentId,
-      text: text.trim()
-    });
+      text: text.trim(),
+      parentId
+    };
+
+    // Apenas adicionar contentId/modelId se não for um reply
+    if (!parentId) {
+      commentData.contentId = contentId;
+      commentData.modelId = modelId;
+    } else {
+      // Para replies, buscar o comentário pai para herdar contentId/modelId
+      const parentComment = await Comment.findByPk(parentId);
+      if (parentComment) {
+        commentData.contentId = parentComment.contentId;
+        commentData.modelId = parentComment.modelId;
+      }
+    }
+
+    const comment = await Comment.create(commentData);
 
     const commentWithUser = await Comment.findByPk(comment.id, {
       include: [{

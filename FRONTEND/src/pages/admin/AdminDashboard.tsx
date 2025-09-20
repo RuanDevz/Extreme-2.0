@@ -20,7 +20,8 @@ import {
   Star,
   Heart,
   MessageCircle,
-  Flag
+  Flag,
+  Wifi
 } from 'lucide-react';
 import { modelsApi, contentApi, reportsApi, authApi } from '../../services/api';
 import { adminApi } from '../../services/api';
@@ -63,6 +64,16 @@ const AdminDashboard: React.FC = () => {
     userGrowth: []
   });
   const [loading, setLoading] = useState(true);
+  const [activeUsers, setActiveUsers] = useState({
+    onlineUsers: 0,
+    activeUsers1h: 0,
+    activeUsers24h: 0,
+    hourlyActivity: []
+  });
+  const [contentCharts, setContentCharts] = useState({
+    contentByType: [],
+    dailyUploads: []
+  });
 
   useEffect(() => {
     if (!user?.isAdmin) {
@@ -165,6 +176,14 @@ const AdminDashboard: React.FC = () => {
         {/* Main Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
+            title="Online Now"
+            value={activeUsers.onlineUsers}
+            icon={<Wifi className="w-6 h-6" />}
+            color="green"
+            loading={loading}
+            subtitle="Last 15 minutes"
+          />
+          <StatCard
             title="Total Users"
             value={stats.totalUsers}
             icon={<Users className="w-6 h-6" />}
@@ -181,30 +200,151 @@ const AdminDashboard: React.FC = () => {
             subtitle={`${Math.round((stats.premiumUsers / stats.totalUsers) * 100)}% conversion`}
           />
           <StatCard
-            title="Total Models"
-            value={stats.totalModels}
-            icon={<UserCheck className="w-6 h-6" />}
-            color="green"
+            title="Pending Reports"
+            value={stats.pendingReports}
+            icon={<AlertTriangle className="w-6 h-6" />}
+            color="orange"
             loading={loading}
-            subtitle="Active profiles"
+            subtitle="Needs attention"
           />
-          <StatCard
-            title="Total Content"
-            value={stats.totalContent}
-            icon={<FileText className="w-6 h-6" />}
-            color="purple"
-            loading={loading}
-            subtitle="Published items"
-          />
+        </div>
+
+        {/* Real-time Activity Dashboard */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Active Users Real-time */}
+          <div className="bg-gradient-to-br from-dark-200 to-dark-100 rounded-2xl p-6 border border-dark-100/50 shadow-xl">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mr-3">
+                  <Activity className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Real-time Activity</h3>
+              </div>
+              <div className="flex items-center text-green-400">
+                <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse" />
+                <span className="text-sm">Live</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-green-500/10 rounded-xl border border-green-500/20">
+                <div className="text-2xl font-bold text-green-400 mb-1">{activeUsers.onlineUsers}</div>
+                <div className="text-xs text-gray-400">Online Now</div>
+                <div className="text-xs text-green-300 mt-1">Last 15min</div>
+              </div>
+              <div className="text-center p-4 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                <div className="text-2xl font-bold text-blue-400 mb-1">{activeUsers.activeUsers1h}</div>
+                <div className="text-xs text-gray-400">Active</div>
+                <div className="text-xs text-blue-300 mt-1">Last hour</div>
+              </div>
+              <div className="text-center p-4 bg-purple-500/10 rounded-xl border border-purple-500/20">
+                <div className="text-2xl font-bold text-purple-400 mb-1">{activeUsers.activeUsers24h}</div>
+                <div className="text-xs text-gray-400">Active</div>
+                <div className="text-xs text-purple-300 mt-1">Last 24h</div>
+              </div>
+            </div>
+
+            {/* Hourly Activity Chart */}
+            <div className="mt-6">
+              <h4 className="text-white font-medium mb-3">Activity by Hour (Last 24h)</h4>
+              <div className="flex items-end space-x-1 h-20">
+                {Array.from({ length: 24 }, (_, i) => {
+                  const hourData = activeUsers.hourlyActivity.find(h => h.hour === i);
+                  const count = hourData?.count || 0;
+                  const maxCount = Math.max(...activeUsers.hourlyActivity.map(h => h.count), 1);
+                  const height = (count / maxCount) * 100;
+                  
+                  return (
+                    <div
+                      key={i}
+                      className="flex-1 bg-primary-500/30 hover:bg-primary-500/50 transition-colors rounded-t"
+                      style={{ height: `${Math.max(height, 5)}%` }}
+                      title={`${i}:00 - ${count} activities`}
+                    />
+                  );
+                })}
+              </div>
+              <div className="flex justify-between text-xs text-gray-400 mt-2">
+                <span>00:00</span>
+                <span>12:00</span>
+                <span>23:59</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Content Performance Charts */}
+          <div className="bg-gradient-to-br from-dark-200 to-dark-100 rounded-2xl p-6 border border-dark-100/50 shadow-xl">
+            <div className="flex items-center mb-6">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mr-3">
+                <BarChart3 className="w-5 h-5 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white">Content Analytics</h3>
+            </div>
+            
+            {/* Content by Type */}
+            <div className="mb-6">
+              <h4 className="text-white font-medium mb-3">Content Distribution</h4>
+              <div className="space-y-3">
+                {contentCharts.contentByType.map((item, index) => {
+                  const total = contentCharts.contentByType.reduce((sum, type) => sum + parseInt(type.count), 0);
+                  const percentage = total > 0 ? (parseInt(item.count) / total) * 100 : 0;
+                  
+                  return (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className={`w-3 h-3 rounded-full mr-3 ${
+                          item.type === 'video' ? 'bg-red-500' :
+                          item.type === 'image' ? 'bg-blue-500' : 'bg-green-500'
+                        }`} />
+                        <span className="text-gray-300 capitalize">{item.type}</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-20 bg-dark-300 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full ${
+                              item.type === 'video' ? 'bg-red-500' :
+                              item.type === 'image' ? 'bg-blue-500' : 'bg-green-500'
+                            }`}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                        <span className="text-white font-medium text-sm">{item.count}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-dark-300/30 rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-white">{stats.totalContent}</div>
+                <div className="text-xs text-gray-400">Total Content</div>
+              </div>
+              <div className="bg-dark-300/30 rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-white">{formatViews(stats.totalViews)}</div>
+                <div className="text-xs text-gray-400">Total Views</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Secondary Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
+            title="Total Models"
+            value={stats.totalModels}
+            icon={<UserCheck className="w-6 h-6" />}
+            color="indigo"
+            loading={loading}
+            subtitle="Active profiles"
+          />
+          <StatCard
             title="Total Views"
             value={stats.totalViews}
             icon={<Eye className="w-6 h-6" />}
-            color="indigo"
+            color="cyan"
             loading={loading}
             subtitle="All time views"
           />
@@ -212,7 +352,7 @@ const AdminDashboard: React.FC = () => {
             title="Comments"
             value={stats.totalComments}
             icon={<MessageCircle className="w-6 h-6" />}
-            color="cyan"
+            color="purple"
             loading={loading}
             subtitle="User engagement"
           />
@@ -224,14 +364,6 @@ const AdminDashboard: React.FC = () => {
             loading={loading}
             subtitle="Content appreciation"
           />
-          <StatCard
-            title="Pending Reports"
-            value={stats.pendingReports}
-            icon={<AlertTriangle className="w-6 h-6" />}
-            color="orange"
-            loading={loading}
-            subtitle="Needs attention"
-          />
         </div>
 
         {/* Content Performance */}
@@ -240,7 +372,7 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-gradient-to-br from-dark-200 to-dark-100 rounded-2xl p-6 border border-dark-100/50 shadow-xl">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
-                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mr-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mr-3">
                   <Star className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-white">Top Models</h3>
@@ -292,14 +424,14 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Top Content */}
+          {/* Daily Upload Trends */}
           <div className="bg-gradient-to-br from-dark-200 to-dark-100 rounded-2xl p-6 border border-dark-100/50 shadow-xl">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mr-3">
-                  <TrendingUp className="w-5 h-5 text-white" />
+                  <FileText className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-white">Most Downloaded</h3>
+                <h3 className="text-xl font-bold text-white">Upload Trends</h3>
               </div>
               <Link
                 to="/admin/content"
@@ -309,42 +441,43 @@ const AdminDashboard: React.FC = () => {
               </Link>
             </div>
             
-            <div className="space-y-4">
-              {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="flex items-center space-x-3 animate-pulse">
-                    <div className="w-12 h-12 bg-dark-300 rounded-xl" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-dark-300 rounded w-3/4" />
-                      <div className="h-3 bg-dark-300 rounded w-1/2" />
-                    </div>
-                  </div>
-                ))
-              ) : (
-                stats.topContent.map((content, index) => (
-                  <div key={content.id} className="flex items-center space-x-3 p-3 bg-dark-300/30 rounded-xl hover:bg-dark-300/50 transition-colors">
-                    <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center text-purple-400 font-bold text-sm">
-                      #{index + 1}
-                    </div>
-                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-dark-400">
-                      <img
-                        src={content.thumbnailUrl || content.model?.photoUrl}
-                        alt={content.title}
-                        className="w-full h-full object-cover"
+            {/* Upload Chart */}
+            <div className="mb-6">
+              <div className="flex items-end space-x-1 h-32">
+                {contentCharts.dailyUploads.slice(-7).map((day, index) => {
+                  const maxUploads = Math.max(...contentCharts.dailyUploads.map(d => d.uploads), 1);
+                  const height = (day.uploads / maxUploads) * 100;
+                  
+                  return (
+                    <div key={index} className="flex-1 flex flex-col items-center">
+                      <div
+                        className="w-full bg-gradient-to-t from-purple-500 to-purple-400 rounded-t hover:from-purple-400 hover:to-purple-300 transition-colors"
+                        style={{ height: `${Math.max(height, 10)}%` }}
+                        title={`${new Date(day.date).toLocaleDateString()} - ${day.uploads} uploads`}
                       />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-white font-medium line-clamp-1">{content.title}</div>
-                      <div className="flex items-center text-sm text-gray-400">
-                        <Download size={12} className="mr-1" />
-                        <span>{formatViews(content.views)} downloads</span>
-                        <span className="mx-2">•</span>
-                        <span>{content.model?.name}</span>
+                      <div className="text-xs text-gray-400 mt-2">
+                        {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
                       </div>
                     </div>
-                  </div>
-                ))
-              )}
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Quick Upload Stats */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-dark-300/30 rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-purple-400">
+                  {contentCharts.dailyUploads.slice(-1)[0]?.uploads || 0}
+                </div>
+                <div className="text-xs text-gray-400">Today's Uploads</div>
+              </div>
+              <div className="bg-dark-300/30 rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-purple-400">
+                  {Math.round(contentCharts.dailyUploads.reduce((sum, day) => sum + day.uploads, 0) / contentCharts.dailyUploads.length) || 0}
+                </div>
+                <div className="text-xs text-gray-400">Daily Average</div>
+              </div>
             </div>
           </div>
         </div>
