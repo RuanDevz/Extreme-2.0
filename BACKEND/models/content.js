@@ -5,15 +5,20 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
       autoIncrement: true,
     },
-    model_id: {
+    content_id: {
       type: DataTypes.STRING,
       allowNull: false,
+      unique: true,
+    },
+    model_id: {
+      type: DataTypes.STRING,
+      allowNull: true,
       references: {
         model: 'Models',
         key: 'model_id'
       },
       onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      onDelete: 'SET NULL',
     },
     slug: {
       type: DataTypes.STRING,
@@ -81,7 +86,8 @@ module.exports = (sequelize, DataTypes) => {
     Content.belongsTo(models.Model, {
       foreignKey: 'model_id',
       targetKey: 'model_id',
-      as: 'model'
+      as: 'model',
+      constraints: false
     });
     Content.hasMany(models.Report, { foreignKey: 'contentId', as: 'reports' });
     Content.hasMany(models.UserHistory, { foreignKey: 'contentId', as: 'histories' });

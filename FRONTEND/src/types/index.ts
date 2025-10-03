@@ -1,3 +1,7 @@
+export interface ContentLite {
+  slug: string;
+}
+
 export interface Model {
   id: number;
   model_id: string;
@@ -11,17 +15,12 @@ export interface Model {
   height?: number;
   weight?: number;
   age?: number;
-  birthPlace?: string;
-  placeOfBirth?: string;
+  placeOfBirth?: string;           // padronizado
   sexuality?: string;
   boobsType?: string;
   cupSize?: string;
   birthDate?: string;
-  placeOfBirth?: string;
-  sexuality?: string;
-  boobsType?: string;
-  cupSize?: string;
-  birthDate?: string;
+  birthPlace: string
   ethnicity?: 'arab' | 'asian' | 'ebony' | 'indian' | 'latina' | 'white';
   tags: string[];
   views: number;
@@ -30,6 +29,9 @@ export interface Model {
   createdAt: string;
   updatedAt: string;
   contentCount?: number;
+
+  // relacionamento resumido
+  contents?: ContentLite[];
 }
 
 export interface Content {
@@ -52,7 +54,7 @@ export interface Content {
   };
   createdAt: string;
   updatedAt: string;
-  model?: Model;
+  model?: Model;                   // relação inversa opcional
 }
 
 export interface Report {
@@ -118,7 +120,7 @@ export interface FilterOptions {
   hairColor?: string;
   eyeColor?: string;
   bodyType?: string;
- type?: string;
+  type?: string;
   tags?: string[];
   search?: string;
 }

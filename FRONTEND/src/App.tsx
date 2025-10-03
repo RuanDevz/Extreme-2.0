@@ -18,8 +18,6 @@ import AdminContent from './pages/admin/AdminContent';
 import AdminReports from './pages/admin/AdminReports';
 import BillingPortal from './pages/BillingPortal';
 import YourAccount from './pages/YourAccount';
-import { useEffect } from 'react';
-import { linkvertise } from './components/Linkvertise/Linkvertise';
 
 function App() {
 

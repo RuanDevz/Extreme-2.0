@@ -318,9 +318,9 @@ const ContentDetail: React.FC = () => {
 
                 {/* Mega Link Section */}
                 <div className="relative overflow-hidden rounded-3xl shadow-2xl min-h-[400px] md:min-h-[500px]">
-                  {content.model?.photoUrl && (
+                  {content.model?.photoUrl && content.model_id && (
                     <>
-                      <div 
+                      <div
                         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
                         style={{
                           backgroundImage: `url(${content.model.photoUrl})`,
@@ -332,24 +332,40 @@ const ContentDetail: React.FC = () => {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
                     </>
                   )}
-                  
+                  {(!content.model_id || !content.model?.photoUrl) && (
+                    <>
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary-900/80 to-black/90" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
+                    </>
+                  )}
+
                   <div className="relative h-full flex flex-col justify-between p-6 md:p-8">
                     <div className="flex items-start justify-between mb-6">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden ring-4 ring-white/20 shadow-xl">
-                          <img
-                            src={content.model?.photoUrl}
-                            alt={content.model?.name}
-                            className="w-full h-full object-cover"
-                          />
+                      {content.model_id && content.model && (
+                        <div className="flex items-center space-x-4">
+                          <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden ring-4 ring-white/20 shadow-xl">
+                            <img
+                              src={content.model.photoUrl}
+                              alt={content.model.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div>
+                            <h3 className="text-xl md:text-2xl font-bold text-white mb-1">
+                              {content.model.name}
+                            </h3>
+                            <p className="text-white/80 text-sm md:text-base">Exclusive Content</p>
+                          </div>
                         </div>
+                      )}
+                      {!content.model_id && (
                         <div>
                           <h3 className="text-xl md:text-2xl font-bold text-white mb-1">
-                            {content.model?.name}
+                            {content.title}
                           </h3>
                           <p className="text-white/80 text-sm md:text-base">Exclusive Content</p>
                         </div>
-                      </div>
+                      )}
                       
                       <div className="bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/20">
                         <div className="flex items-center text-white">
@@ -440,7 +456,7 @@ const ContentDetail: React.FC = () => {
                 </div>
               </div>
 
-              {content.model && (
+              {content.model && content.model_id && (
                 <div className="bg-dark-200 rounded-xl shadow-lg p-6">
                   <h3 className="text-xl font-semibold text-white mb-4">About the Model</h3>
                   <div className="flex items-start space-x-4">
@@ -542,7 +558,7 @@ const ContentDetail: React.FC = () => {
                   )}
                 </div>
 
-                {content.model && (
+                {content.model && content.model_id && (
                   <div className="mt-6 pt-6 border-t border-dark-100">
                     <button
                       onClick={() => navigate(`/model/${content.model!.slug}`)}

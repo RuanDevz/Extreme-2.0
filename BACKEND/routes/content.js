@@ -5,21 +5,39 @@ const { Content, Model, UserHistory } = require('../models');
 const { Op } = require('sequelize');
 const slugify = require('slugify');
 const encryptionService = require('../utils/encryption');
-// util: slug = <slug-da-modelo>-<slug-do-título>(-<contador> quando houver repetição do título para a mesma modelo)
-async function generateContentSlug(modelName, contentTitle) {
-  const modelSlug = slugify(modelName, { lower: true, strict: true });
-  const titleSlug = slugify(contentTitle, { lower: true, strict: true });
+async function generateContentSlug(contentTitle, modelName = null) {
+  let baseSlug;
 
-  const baseSlug = `${modelSlug}-${titleSlug}`;
+  if (modelName) {
+    const modelSlug = slugify(modelName, { lower: true, strict: true });
+    const titleSlug = slugify(contentTitle, { lower: true, strict: true });
+    baseSlug = `${modelSlug}-${titleSlug}`;
+  } else {
+    baseSlug = slugify(contentTitle, { lower: true, strict: true });
+  }
+
   let slug = baseSlug;
   let counter = 1;
 
-  // Verifica se já existe conteúdo com o mesmo slug
   while (await Content.findOne({ where: { slug } })) {
     slug = `${baseSlug}-${counter++}`;
   }
 
   return slug;
+}
+
+async function generateContentId() {
+  const crypto = require('crypto');
+  let content_id;
+  let exists = true;
+
+  while (exists) {
+    content_id = `content_${crypto.randomBytes(8).toString('hex')}`;
+    const existing = await Content.findOne({ where: { content_id } });
+    exists = !!existing;
+  }
+
+  return content_id;
 }
 
 // Listar todos os conteúdos
@@ -56,7 +74,7 @@ router.get('/', async (req, res) => {
         model: Model,
         as: 'model',
         attributes: ['id', 'model_id', 'name', 'slug', 'photoUrl'],
-        required: true
+        required: false
       }]
     });
 
@@ -133,15 +151,18 @@ router.post('/', async (req, res) => {
   try {
     const contentData = { ...req.body };
 
-    const model = await Model.findOne({ where: { model_id: contentData.model_id } });
-    if (!model) {
-      return res.status(404).json({ error: 'Modelo não encontrado com o model_id fornecido' });
+    let modelName = null;
+    if (contentData.model_id) {
+      const model = await Model.findOne({ where: { model_id: contentData.model_id } });
+      if (!model) {
+        return res.status(404).json({ error: 'Modelo não encontrado com o model_id fornecido' });
+      }
+      modelName = model.name;
     }
 
-    // gera slug
-    contentData.slug = await generateContentSlug(model.name, contentData.title, contentData.model_id);
+    contentData.content_id = await generateContentId();
+    contentData.slug = await generateContentSlug(contentData.title, modelName);
 
-    // info
     if (contentData.info) {
       const { images, videos, size } = contentData.info;
       const info = {};
@@ -153,16 +174,15 @@ router.post('/', async (req, res) => {
 
     const newContent = await Content.create(contentData);
 
-    // cifra apenas os dados internos
     const encrypted = encryptionService.encrypt({
       message: 'success',
       id: newContent.id,
-      model_id: newContent.model_id
+      content_id: newContent.content_id,
+      model_id: newContent.model_id || null
     });
 
-    // devolve slug em claro + bloco cifrado
     return res.status(201).json({
-      ...encrypted,        // { encrypted:true, data:{...}, timestamp }
+      ...encrypted,
       slug: newContent.slug
     });
 

@@ -89,9 +89,16 @@ const getTagIcon = (tag: string) => {
     return age;
   };
 
+  const hasContent = model.contents && model.contents.length > 0;
+  const hasProfile = model.bio || model.hairColor || model.eyeColor || model.bodyType;
+
+  const linkDestination = !hasProfile && hasContent
+    ? `/content/${model.contents[0].slug}`
+    : `/model/${model.slug}`;
+
   return (
     <Link
-      to={`/model/${model.slug}`} 
+      to={linkDestination}
       className="group block overflow-hidden bg-dark-200 rounded-lg shadow-md transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
     >
       <div className="relative aspect-[3/4] overflow-hidden">

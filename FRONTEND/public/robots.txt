@@ -1,0 +1,18 @@
+# robots.txt for ShowLeaks
+User-agent: *
+Allow: /
+Allow: /models
+Allow: /model/*
+Allow: /content/*
+Allow: /premium
+
+Disallow: /admin
+Disallow: /your-account
+Disallow: /billing-portal
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://showleaks.com/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 1
