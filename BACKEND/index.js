@@ -7,6 +7,7 @@ require('dotenv').config();
 const { Pool } = require('pg');
 const encryptResponse = require('./Middleware/encryption');
 
+
 const app = express();
 
 // CORS: permita cookies se houver front separado
@@ -69,6 +70,7 @@ const likesRouter = require('./routes/likes');
 const { router: notificationsRouter } = require('./routes/notifications');
 const adminRouter = require('./routes/admin');
 const recommendationsRouter = require('./routes/recommendations');
+const rateLimit = require('express-rate-limit');
 
 app.use('/auth', authRouter);
 app.use('/age-verification', ageVerificationRouter);
@@ -86,40 +88,151 @@ app.use('/notifications', notificationsRouter);
 app.use('/admin', adminRouter);
 app.use('/recommendations', recommendationsRouter);
 
-// Rota de saúde
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    version: '1.0.0'
-  });
-});
-const pool = new Pool({
-  connectionString: process.env.POSTGRES_URL,
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 100, 
+  message: 'Ip bloqueado.',
 });
 
-const PORT = process.env.PORT || 3001;
+app.use(limiter); 
 
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
-});
 
-pool.connect((err, client, done) => {
-  if (err) {
-    console.error('Erro ao conectar ao banco de dados:', err);
-    return;
+app.use((req, res, next) => {
+  const ua = req.headers['user-agent'] || '';
+  if (/curl|wget|bot|spider/i.test(ua)) {
+    return res.status(403).send('Forbidden');
   }
-  console.log('Conexão bem-sucedida ao banco de dados');
-  done();
+  next();
 });
 
-db.sequelize.authenticate()
-  .then(() => {
-    console.log('Conexão com o banco de dados estabelecida com sucesso.');
-    return db.sequelize.sync()
-  })
-  .catch(err => {
-    console.error('Erro ao conectar ao banco de dados Sequelize:', err);
-  });
+app.use((req, res, next) => {
+  const url = decodeURIComponent(req.originalUrl);
 
-module.exports = app;
+  const bloqueios = [
+    /\.bak$/i,
+    /\.old$/i,
+    /nice ports/i,
+    /trinity/i,
+    /\.git/i,
+    /\.env/i,
+    /wp-admin/i,
+    /phpmyadmin/i
+  ];
+
+  for (const pattern of bloqueios) {
+    if (pattern.test(url)) {
+      console.warn(`try suspect: ${url}`);
+      return res.status(403).send('Access denied.');
+    }
+  }
+
+  next();
+});
+
+
+
+const pool = new Pool({
+  connectionString: process.env.POSTGRES_URL, 
+  max: 3, // Máximo de conexões no pool
+  min: 0,
+  idle: 5000,
+  connectionTimeoutMillis: 60000,
+  idleTimeoutMillis: 30000,
+  allowExitOnIdle: true,
+  ssl: {
+    require: true,
+    rejectUnauthorized: false
+  }
+});
+
+// Teste de conexão mais robusto
+const testConnection = async () => {
+  try {
+    const client = await pool.connect();
+    console.log('Conexão bem-sucedida ao banco de dados');
+    client.release();
+  } catch (err) {
+    console.error('Erro ao conectar ao banco de dados:', err);
+  }
+};
+
+// Configuração mais robusta do Sequelize
+const initializeDatabase = async () => {
+  try {
+    // Teste de autenticação com timeout
+    await Promise.race([
+      db.sequelize.authenticate(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout na autenticação')), 10000)
+      )
+    ]);
+    console.log('Conexão Sequelize estabelecida com sucesso.');
+    
+    // Criar tabelas se não existirem (tanto dev quanto prod)
+    const tablesCreated = await Promise.race([
+      db.createTablesIfNotExist(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout na criação de tabelas')), 30000)
+      )
+    ]);
+    
+    if (tablesCreated) {
+      console.log('✅ Database initialization completed.');
+    } else {
+      console.warn('⚠️ Algumas tabelas podem não ter sido criadas corretamente.');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Erro na inicialização do banco:', error.message);
+    
+    // Tenta continuar mesmo com erro de sync
+    console.log('⚠️ Continuando sem sync completo...');
+    return true;
+  }
+};
+
+// Inicialização assíncrona
+(async () => {
+  try {
+    // Testa conexão do pool
+    await testConnection();
+    
+    // Inicializa Sequelize
+    const dbInitialized = await initializeDatabase();
+    
+    if (dbInitialized) {
+      const PORT = process.env.PORT || 3001;
+      const server = app.listen(PORT, () => {
+        console.log(`Servidor rodando na porta ${PORT}...`);
+      });
+      
+      // Graceful shutdown
+      process.on('SIGTERM', async () => {
+        console.log('SIGTERM recebido, fechando servidor...');
+        server.close(async () => {
+          await db.sequelize.close();
+          await pool.end();
+          process.exit(0);
+        });
+      });
+      
+      process.on('SIGINT', async () => {
+        console.log('SIGINT recebido, fechando servidor...');
+        server.close(async () => {
+          await db.sequelize.close();
+          await pool.end();
+          process.exit(0);
+        });
+      });
+    } else {
+      console.error('Falha na inicialização do banco de dados');
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error('Erro fatal na inicialização:', error);
+    process.exit(1);
+  }
+})();
+
+  module.exports = app;
