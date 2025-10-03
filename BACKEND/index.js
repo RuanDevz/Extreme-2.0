@@ -55,7 +55,7 @@ app.use((req, res, next) => {
   }
 });
 
-// Aplicar middleware de criptografia
+// Aplicar
 app.use(encryptResponse);
 const authRouter = require('./routes/auth');
 const modelsRouter = require('./routes/models');
