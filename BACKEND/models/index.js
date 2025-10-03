@@ -69,7 +69,7 @@ if (url) {
     // Configurações específicas para serverless
     hooks: {
       beforeConnect: async (config) => {
-        console.log('Tentando conectar ao banco...');
+        console.log('Tentando conectar ao banco...' + config);
       },
       afterConnect: async (connection, config) => {
         console.log('Conexão estabelecida com sucesso');
